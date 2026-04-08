@@ -1,0 +1,161 @@
+:root {
+  --bg-color: #0f1115;
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  --warning-color: #eab308;
+
+  --card-radius: 16px;
+  --font-family: 'Inter', -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
+}
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Glassmorphism Card Utilities */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  padding: 24px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.grid {
+  display: grid;
+  gap: 24px;
+}
+
+.grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+@media (max-width: 768px) {
+  .grid-cols-2, .grid-cols-3 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}
+
+/* Typography */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+.text-3xl { font-size: 1.875rem; }
+
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.text-secondary { color: var(--text-secondary); }
+.text-success { color: var(--success-color); }
+.text-danger { color: var(--danger-color); }
+
+/* Components */
+.btn {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background: var(--accent-hover);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.stat-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* App Header Visual Flow */
+.flow-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  margin-bottom: 32px;
+  background: rgba(255,255,255,0.02);
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px dashed var(--border-color);
+}
+@media (max-width: 768px) {
+  .flow-container {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Icon Utilities */
+.material-symbols-outlined {
+  vertical-align: middle;
+  font-size: 1.25em; 
+}
+
+.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
