@@ -5,7 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true, // Allow network access for local testing just in case
+    host: true,
+    allowedHosts: true, // Allow all hosts including Cloudflare tunnel
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',
