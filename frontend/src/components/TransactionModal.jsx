@@ -75,7 +75,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
     setLoading(true)
     try {
       const ep = getEndpoint(type)
-      const response = await fetch(`http://127.0.0.1:8000/${ep}/${initialData.id}`, { method: 'DELETE' })
+      const response = await fetch(`/api/${ep}/${initialData.id}`, { method: 'DELETE' })
       if (!response.ok) throw new Error("Failed to delete transaction")
       onRefresh()
       onClose()
@@ -112,7 +112,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
 
     try {
       const isEdit = initialData && initialData.id
-      const url = `http://127.0.0.1:8000/${ep}` + (isEdit ? `/${initialData.id}` : '')
+      const url = `/api/${ep}` + (isEdit ? `/${initialData.id}` : '')
       const method = isEdit ? 'PUT' : 'POST'
 
       const response = await fetch(url, {

@@ -76,12 +76,12 @@ export default function Dashboard({ summaryData, onEdit }) {
       <div className="flow-container">
         <div className="flow-step">
           <h2 className="text-xl font-bold icon-text" style={{ marginBottom: '16px' }}><span className="material-symbols-outlined">payments</span> Income Master</h2>
-          <p className="text-2xl font-bold text-success">+{income_monthly.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
+          <p className="text-2xl font-bold text-success">+{income_monthly.toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-sm font-normal">{currency}</span></p>
         </div>
         <div className="text-secondary"><span className="material-symbols-outlined">arrow_forward</span></div>
         <div className="flow-step">
           <h2 className="text-xl font-bold icon-text" style={{ marginBottom: '16px' }}><span className="material-symbols-outlined">shopping_cart</span> Expense Master</h2>
-          <p className="text-2xl font-bold text-danger">-{expense_monthly.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
+          <p className="text-2xl font-bold text-danger">-{expense_monthly.toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-sm font-normal">{currency}</span></p>
         </div>
         <div className="text-secondary"><span className="material-symbols-outlined">arrow_forward</span></div>
         <div className="flow-step glass-card" style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '16px', margin: 0 }}>

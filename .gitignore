@@ -9,3 +9,13 @@ savings.db
 dist/
 build/
 *.db
+
+# logs
+*.log
+
+# Cloudflare tunnel logs
+cf_output.log
+cf_tunnel_output.log
+tunnel.log
+tunnel_final.log
+tunnel_stderr.log

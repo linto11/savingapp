@@ -15,7 +15,7 @@ function App() {
   const [baseCurrency, setBaseCurrency] = useState('AED')
 
   const fetchDashboard = () => {
-    fetch(`http://127.0.0.1:8000/dashboard/summary?target_currency=${baseCurrency}`)
+    fetch(`/api/dashboard/summary?target_currency=${baseCurrency}`)
       .then(res => res.json())
       .then(d => {
         setData(d)
