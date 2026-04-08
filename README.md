@@ -1,5 +1,7 @@
 # Multi-Currency Savings Ledger
 
+![Dashboard Screenshot](docs/screenshot.png)
+
 A robust, real-time financial tracking application powered by a FastAPI Python backend and a React (Vite) frontend. The application features a dynamic Goal Waterfall engine, chronological native Master Ledgers, and strict multi-currency algorithmic rounding to effectively track offline wealth accumulation.
 
 ## Project Structure
