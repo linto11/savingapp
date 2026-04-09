@@ -150,6 +150,15 @@ def delete_goal(item_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
+@app.get("/settings")
+def get_settings():
+    return config.load_settings()
+
+@app.post("/settings")
+def update_settings(settings: dict):
+    config.save_settings(settings)
+    return {"ok": True}
+
 
 from datetime import datetime
 
@@ -176,9 +185,14 @@ def get_summary(target_currency: str = "AED", db: Session = Depends(get_db), cur
     goals_summary = []
     now = datetime.utcnow()
     
+    settings_data = config.load_settings()
+    base_currency = settings_data.get("base_currency", "AED")
+    emergency_buffer_base = settings_data.get("emergency_buffer", 50000)
+    emergency_buffer = config.convert_currency(emergency_buffer_base, base_currency, target_currency)
+
     # Sort goals chronologically by target_date securely checking for None
     sorted_goals = sorted(goals, key=lambda x: getattr(x, 'target_date', None) or datetime.max)
-    remaining_pool = total_savings_start
+    remaining_pool = max(total_savings_start - emergency_buffer, 0)
     
     for g in sorted_goals:
         g_amount = config.convert_currency(g.target_amount, g.currency, target_currency)
@@ -209,6 +223,7 @@ def get_summary(target_currency: str = "AED", db: Session = Depends(get_db), cur
     return {
         "currency": target_currency,
         "initial_savings": total_savings_start,
+        "emergency_buffer": emergency_buffer,
         "income_monthly": monthly_income,
         "expense_monthly": monthly_expense,
         "net_savings_monthly": net_monthly_savings,

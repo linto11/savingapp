@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Dashboard from './views/Dashboard'
 import Ledger from './views/Ledger'
 import TransactionModal from './components/TransactionModal'
+import SettingsModal from './components/SettingsModal'
 import './index.css'
 
 function App() {
@@ -9,6 +10,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [modalType, setModalType] = useState('Income')
   const [modalInitialData, setModalInitialData] = useState(null)
   
@@ -38,6 +40,10 @@ function App() {
   }
 
   const handleEdit = (type, item) => {
+    if (type === 'EmergencyBuffer') {
+      setIsSettingsOpen(true)
+      return
+    }
     setModalType(type)
     setModalInitialData(item)
     setIsModalOpen(true)
@@ -54,7 +60,7 @@ function App() {
           <h1 className="text-2xl font-bold">Savings Planner</h1>
           <p className="text-secondary text-sm">Joint Household View</p>
         </div>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div className="header-actions">
           <select 
             value={baseCurrency}
             onChange={(e) => setBaseCurrency(e.target.value)}
@@ -71,7 +77,7 @@ function App() {
         </div>
       </header>
 
-      <nav style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+      <nav className="nav-tabs">
         <button 
           onClick={() => setActiveTab('dashboard')}
           style={{ background: 'none', border: 'none', color: activeTab === 'dashboard' ? 'var(--accent-color)' : 'var(--secondary-color)', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'dashboard' ? '2px solid var(--accent-color)' : 'none', paddingBottom: '12px', marginBottom: '-14px', transition: '0.2s' }}
@@ -106,6 +112,14 @@ function App() {
           currency={baseCurrency}
           initialType={modalType}
           initialData={modalInitialData}
+        />
+      )}
+
+      {isSettingsOpen && (
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onRefresh={fetchDashboard}
         />
       )}
     </div>

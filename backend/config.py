@@ -6,12 +6,20 @@ SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "app_settings.json")
 def load_settings():
     try:
         with open(SETTINGS_FILE, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            if "emergency_buffer" not in data:
+                data["emergency_buffer"] = 50000
+            return data
     except FileNotFoundError:
         return {
             "base_currency": "AED",
-            "exchange_rates": {"AED": 1.0, "USD": 0.27, "INR": 22.5}
+            "exchange_rates": {"AED": 1.0, "USD": 0.27, "INR": 22.5},
+            "emergency_buffer": 50000
         }
+
+def save_settings(settings):
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump(settings, f, indent=2)
 
 def get_exchange_rate(from_curr: str, to_curr: str) -> float:
     # converts $amount in from_curr to to_curr
