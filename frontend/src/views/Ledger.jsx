@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 
-export default function Ledger({ summaryData, onEdit, currency }) {
-  const { raw_incomes = [], raw_expenses = [] } = summaryData
+export default function Ledger({ summaryData, onEdit, onAddNew, currency }) {
+  const { ledger_incomes = [], ledger_expenses = [] } = summaryData
   
   const currentYear = new Date().getFullYear().toString()
   const [expandedYears, setExpandedYears] = useState({ [currentYear]: true })
@@ -19,7 +19,7 @@ export default function Ledger({ summaryData, onEdit, currency }) {
     const years = {}
 
     const processItem = (item, type) => {
-      const dateStr = item.date ? item.date.split('T')[0] : new Date().toISOString().split('T')[0]
+      const dateStr = item.date.split('T')[0]
       const year = dateStr.substring(0, 4) // "YYYY"
       const month = dateStr.substring(5, 7) // "MM"
       
@@ -41,8 +41,8 @@ export default function Ledger({ summaryData, onEdit, currency }) {
       }
     }
 
-    raw_incomes.forEach(i => processItem(i, 'Income'))
-    raw_expenses.forEach(e => processItem(e, 'Expense'))
+    ledger_incomes.forEach(i => processItem(i, 'Income'))
+    ledger_expenses.forEach(e => processItem(e, 'Expense'))
 
     return Object.entries(years).sort(([a], [b]) => b.localeCompare(a)).map(([year, yearData]) => ({
       year,
@@ -50,13 +50,19 @@ export default function Ledger({ summaryData, onEdit, currency }) {
       totalExpense: yearData.totalExpense,
       months: Object.entries(yearData.months).sort(([a], [b]) => b.localeCompare(a)).map(([m, mData]) => mData)
     }))
-  }, [raw_incomes, raw_expenses])
+  }, [ledger_incomes, ledger_expenses])
 
   return (
     <div>
-      <h2 className="text-xl font-bold icon-text" style={{ marginBottom: '16px' }}>
-        <span className="material-symbols-outlined">receipt_long</span> Yearly Ledger
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 className="text-xl font-bold icon-text">
+          <span className="material-symbols-outlined">receipt_long</span> Yearly Ledger
+        </h2>
+        <button className="btn icon-text" onClick={onAddNew}>
+          <span className="material-symbols-outlined">add_circle</span>
+          Add Transaction
+        </button>
+      </div>
       <p className="text-secondary text-sm" style={{ marginBottom: '24px' }}>
         A strictly unsimulated breakdown of exact incomes and expenses organizing your cash flow reality.
       </p>

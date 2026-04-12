@@ -1,11 +1,25 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from . import models, schemas, config
 from .database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
+
+def ensure_backward_compatible_schema():
+    # Existing SQLite files may predate account linkage columns.
+    with engine.begin() as conn:
+        income_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(incomes)"))]
+        if "account_id" not in income_cols:
+            conn.execute(text("ALTER TABLE incomes ADD COLUMN account_id INTEGER"))
+
+        expense_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(expenses)"))]
+        if "account_id" not in expense_cols:
+            conn.execute(text("ALTER TABLE expenses ADD COLUMN account_id INTEGER"))
+
+ensure_backward_compatible_schema()
 
 app = FastAPI(title="Savings App API")
 
@@ -28,6 +42,20 @@ def get_current_user(db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     return user
+
+def get_default_account_id(db: Session, current_user: models.User):
+    default_account = db.query(models.Account).filter(
+        models.Account.user_id == current_user.id,
+        models.Account.name == "Linto - ENBD"
+    ).first()
+    if default_account:
+        return default_account.id
+
+    fallback_account = db.query(models.Account).filter(models.Account.user_id == current_user.id).order_by(models.Account.id.asc()).first()
+    if fallback_account:
+        return fallback_account.id
+
+    return None
 
 @app.post("/users", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -55,7 +83,10 @@ def get_incomes(db: Session = Depends(get_db), current_user: models.User = Depen
 
 @app.post("/incomes", response_model=schemas.Income)
 def create_income(income: schemas.IncomeCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_income = models.Income(**income.model_dump(), user_id=current_user.id)
+    payload = income.model_dump()
+    if payload.get("account_id") is None:
+        payload["account_id"] = get_default_account_id(db, current_user)
+    db_income = models.Income(**payload, user_id=current_user.id)
     db.add(db_income)
     db.commit()
     db.refresh(db_income)
@@ -67,11 +98,34 @@ def get_expenses(db: Session = Depends(get_db), current_user: models.User = Depe
 
 @app.post("/expenses", response_model=schemas.Expense)
 def create_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_expense = models.Expense(**expense.model_dump(), user_id=current_user.id)
+    payload = expense.model_dump()
+    if payload.get("account_id") is None:
+        payload["account_id"] = get_default_account_id(db, current_user)
+    db_expense = models.Expense(**payload, user_id=current_user.id)
     db.add(db_expense)
     db.commit()
     db.refresh(db_expense)
     return db_expense
+
+@app.get("/transfers", response_model=list[schemas.Transfer])
+def get_transfers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.Transfer).filter(models.Transfer.user_id == current_user.id).all()
+
+@app.post("/transfers", response_model=schemas.Transfer)
+def create_transfer(transfer: schemas.TransferCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if transfer.from_account_id == transfer.to_account_id:
+        raise HTTPException(status_code=400, detail="Source and destination account must be different")
+
+    from_acc = db.query(models.Account).filter(models.Account.id == transfer.from_account_id, models.Account.user_id == current_user.id).first()
+    to_acc = db.query(models.Account).filter(models.Account.id == transfer.to_account_id, models.Account.user_id == current_user.id).first()
+    if not from_acc or not to_acc:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    db_transfer = models.Transfer(**transfer.model_dump(), user_id=current_user.id)
+    db.add(db_transfer)
+    db.commit()
+    db.refresh(db_transfer)
+    return db_transfer
 
 @app.get("/goals", response_model=list[schemas.Goal])
 def get_goals(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -105,6 +159,8 @@ def delete_account(item_id: int, db: Session = Depends(get_db)):
 @app.put("/incomes/{item_id}", response_model=schemas.Income)
 def update_income(item_id: int, item: schemas.IncomeCreate, db: Session = Depends(get_db)):
     db_item = db.query(models.Income).filter(models.Income.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Income not found")
     for k, v in item.model_dump().items():
         setattr(db_item, k, v)
     db.commit()
@@ -114,6 +170,8 @@ def update_income(item_id: int, item: schemas.IncomeCreate, db: Session = Depend
 @app.delete("/incomes/{item_id}")
 def delete_income(item_id: int, db: Session = Depends(get_db)):
     db_item = db.query(models.Income).filter(models.Income.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Income not found")
     db.delete(db_item)
     db.commit()
     return {"ok": True}
@@ -121,6 +179,8 @@ def delete_income(item_id: int, db: Session = Depends(get_db)):
 @app.put("/expenses/{item_id}", response_model=schemas.Expense)
 def update_expense(item_id: int, item: schemas.ExpenseCreate, db: Session = Depends(get_db)):
     db_item = db.query(models.Expense).filter(models.Expense.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Expense not found")
     for k, v in item.model_dump().items():
         setattr(db_item, k, v)
     db.commit()
@@ -130,6 +190,37 @@ def update_expense(item_id: int, item: schemas.ExpenseCreate, db: Session = Depe
 @app.delete("/expenses/{item_id}")
 def delete_expense(item_id: int, db: Session = Depends(get_db)):
     db_item = db.query(models.Expense).filter(models.Expense.id == item_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    db.delete(db_item)
+    db.commit()
+    return {"ok": True}
+
+@app.put("/transfers/{item_id}", response_model=schemas.Transfer)
+def update_transfer(item_id: int, item: schemas.TransferCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    db_item = db.query(models.Transfer).filter(models.Transfer.id == item_id, models.Transfer.user_id == current_user.id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+
+    if item.from_account_id == item.to_account_id:
+        raise HTTPException(status_code=400, detail="Source and destination account must be different")
+
+    from_acc = db.query(models.Account).filter(models.Account.id == item.from_account_id, models.Account.user_id == current_user.id).first()
+    to_acc = db.query(models.Account).filter(models.Account.id == item.to_account_id, models.Account.user_id == current_user.id).first()
+    if not from_acc or not to_acc:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    for k, v in item.model_dump().items():
+        setattr(db_item, k, v)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+@app.delete("/transfers/{item_id}")
+def delete_transfer(item_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    db_item = db.query(models.Transfer).filter(models.Transfer.id == item_id, models.Transfer.user_id == current_user.id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Transfer not found")
     db.delete(db_item)
     db.commit()
     return {"ok": True}
@@ -168,15 +259,22 @@ def get_summary(target_currency: str = "AED", db: Session = Depends(get_db), cur
     incomes = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
     expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
     goals = db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
+    transfers = db.query(models.Transfer).filter(models.Transfer.user_id == current_user.id).all()
+
+    master_incomes = [i for i in incomes if getattr(i, 'date', None) is None]
+    master_expenses = [e for e in expenses if getattr(e, 'date', None) is None]
+    
+    ledger_incomes = [i for i in incomes if getattr(i, 'date', None) is not None]
+    ledger_expenses = [e for e in expenses if getattr(e, 'date', None) is not None]
 
     now = datetime.utcnow()
-    current_month_incomes = [i for i in incomes if not i.date or (i.date.month == now.month and i.date.year == now.year)]
-    current_month_expenses = [e for e in expenses if not e.date or (e.date.month == now.month and e.date.year == now.year)]
+    current_month_incomes = [i for i in ledger_incomes if i.date.month == now.month and i.date.year == now.year]
+    current_month_expenses = [e for e in ledger_expenses if e.date.month == now.month and e.date.year == now.year]
 
     total_bank = sum([config.convert_currency(a.initial_balance, a.currency, target_currency) for a in accounts])
-    total_incomes = sum([config.convert_currency(i.amount, i.currency, target_currency) for i in incomes])
-    total_expenses = sum([config.convert_currency(e.amount, e.currency, target_currency) for e in expenses])
-    total_savings_start = total_bank + total_incomes - total_expenses
+    total_ledger_incomes = sum([config.convert_currency(i.amount, i.currency, target_currency) for i in ledger_incomes])
+    total_ledger_expenses = sum([config.convert_currency(e.amount, e.currency, target_currency) for e in ledger_expenses])
+    total_savings_start = total_bank + total_ledger_incomes - total_ledger_expenses
 
     monthly_income = sum([config.convert_currency(i.amount, i.currency, target_currency) for i in current_month_incomes])
     monthly_expense = sum([config.convert_currency(e.amount, e.currency, target_currency) for e in current_month_expenses])
@@ -220,6 +318,29 @@ def get_summary(target_currency: str = "AED", db: Session = Depends(get_db), cur
             "on_track": (months_needed >= 0 and months_needed <= months_available) if months_available > 0 else False
         })
 
+    # Compute per-account running balances without affecting global goal pool math.
+    account_balances = {a.id: a.initial_balance for a in accounts}
+    for i in ledger_incomes:
+        if getattr(i, 'account_id', None) in account_balances:
+            account_balances[i.account_id] += i.amount
+    for e in ledger_expenses:
+        if getattr(e, 'account_id', None) in account_balances:
+            account_balances[e.account_id] -= e.amount
+    for t in transfers:
+        from_account = next((a for a in accounts if a.id == t.from_account_id), None)
+        to_account = next((a for a in accounts if a.id == t.to_account_id), None)
+        if from_account and to_account:
+            out_amount = config.convert_currency(t.amount, t.currency, from_account.currency)
+            in_amount = config.convert_currency(t.amount, t.currency, to_account.currency)
+            account_balances[from_account.id] -= out_amount
+            account_balances[to_account.id] += in_amount
+
+    raw_accounts = []
+    for a in accounts:
+        row = schemas.Account.model_validate(a).model_dump()
+        row["current_balance"] = account_balances.get(a.id, a.initial_balance)
+        raw_accounts.append(row)
+
     return {
         "currency": target_currency,
         "initial_savings": total_savings_start,
@@ -228,8 +349,13 @@ def get_summary(target_currency: str = "AED", db: Session = Depends(get_db), cur
         "expense_monthly": monthly_expense,
         "net_savings_monthly": net_monthly_savings,
         "goals": goals_summary,
-        "raw_accounts": [schemas.Account.model_validate(a).model_dump() for a in accounts],
-        "raw_incomes": [schemas.Income.model_validate(i).model_dump() for i in incomes],
-        "raw_expenses": [schemas.Expense.model_validate(e).model_dump() for e in expenses],
+        "master_income_total": sum([config.convert_currency(i.amount, i.currency, target_currency) for i in master_incomes]),
+        "master_expense_total": sum([config.convert_currency(e.amount, e.currency, target_currency) for e in master_expenses]),
+        "raw_accounts": raw_accounts,
+        "raw_incomes": [schemas.Income.model_validate(i).model_dump() for i in master_incomes],
+        "raw_expenses": [schemas.Expense.model_validate(e).model_dump() for e in master_expenses],
+        "ledger_incomes": [schemas.Income.model_validate(i).model_dump() for i in ledger_incomes],
+        "ledger_expenses": [schemas.Expense.model_validate(e).model_dump() for e in ledger_expenses],
+        "raw_transfers": [schemas.Transfer.model_validate(t).model_dump() for t in transfers],
         "raw_goals": [schemas.Goal.model_validate(g).model_dump() for g in goals]
     }

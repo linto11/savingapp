@@ -70,10 +70,6 @@ function App() {
             <option value="USD">Display in USD</option>
             <option value="INR">Display in INR</option>
           </select>
-          <button className="btn icon-text" onClick={handleOpenAddNew}>
-            <span className="material-symbols-outlined">add_circle</span>
-            Add Transaction
-          </button>
         </div>
       </header>
 
@@ -98,7 +94,7 @@ function App() {
         activeTab === 'dashboard' ? (
           <Dashboard summaryData={data} onEdit={handleEdit} />
         ) : (
-          <Ledger summaryData={data} onEdit={handleEdit} currency={baseCurrency} />
+          <Ledger summaryData={data} onEdit={handleEdit} onAddNew={handleOpenAddNew} currency={baseCurrency} />
         )
       ) : (
         <p>No dashboard data reachable. Ensure backend is running.</p>

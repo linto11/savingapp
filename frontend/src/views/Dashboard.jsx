@@ -10,6 +10,8 @@ export default function Dashboard({ summaryData, onEdit }) {
     expense_monthly, 
     net_savings_monthly, 
     goals,
+    master_income_total = 0,
+    master_expense_total = 0,
     raw_incomes = [],
     raw_expenses = [],
     raw_accounts = [],
@@ -29,10 +31,22 @@ export default function Dashboard({ summaryData, onEdit }) {
 
   const TransactionListCard = ({ title, type, items, formatter }) => (
     <div className="glass-card" style={{ marginBottom: '24px' }}>
-      <h3 className="text-sm font-bold text-secondary icon-text" style={{ marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-        <span className="material-symbols-outlined">{getIconForType(type)}</span>
-        {title}
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+        <h3 className="text-sm font-bold text-secondary icon-text">
+          <span className="material-symbols-outlined">{getIconForType(type)}</span>
+          {title}
+        </h3>
+        {(type === 'Income' || type === 'Expense') && (
+          <button 
+            className="icon-text"
+            title="Add New"
+            onClick={() => onEdit(type, null)} 
+            style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--accent-color)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>add</span>
+          </button>
+        )}
+      </div>
       {items.length === 0 ? (
         <p className="text-secondary text-sm">No entries yet.</p>
       ) : (
@@ -49,9 +63,19 @@ export default function Dashboard({ summaryData, onEdit }) {
                 <p className="font-bold text-sm" style={{ color: type === 'Expense' ? 'var(--danger-color)' : 'inherit', whiteSpace: 'nowrap' }}>
                   {formatter(item).value} <span className="text-xs" style={{ color: 'var(--secondary-color)' }}>{item.currency}</span>
                 </p>
+                {(type === 'Income' || type === 'Expense') && (
+                  <button 
+                    className="icon-text"
+                    title="Clone to Ledger"
+                    onClick={() => { const cln = {...item}; delete cln.id; onEdit(type, cln); }} 
+                    style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>content_copy</span>
+                  </button>
+                )}
                 <button 
                   className="icon-text"
-                  title="Edit"
+                  title="Edit Master"
                   onClick={() => onEdit(type, item)} 
                   style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}
                 >
@@ -60,6 +84,14 @@ export default function Dashboard({ summaryData, onEdit }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {items.length > 0 && (type === 'Income' || type === 'Expense') && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+          <p className="text-sm font-bold">Total</p>
+          <p className="text-sm font-bold" style={{ color: type === 'Expense' ? 'var(--danger-color)' : 'var(--success-color)', whiteSpace: 'nowrap' }}>
+            {type === 'Expense' ? '-' : '+'}{(type === 'Income' ? master_income_total : master_expense_total).toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-xs" style={{ color: 'var(--secondary-color)' }}>{currency}</span>
+          </p>
         </div>
       )}
     </div>
@@ -129,7 +161,7 @@ export default function Dashboard({ summaryData, onEdit }) {
           />
           <TransactionListCard 
             title="Linked Bank Accounts (Base Savings)" type="Account" items={raw_accounts} 
-            formatter={(a) => ({ name: a.name, value: `${a.initial_balance}` })} 
+            formatter={(a) => ({ name: a.name, value: `${a.current_balance ?? a.initial_balance}` })} 
           />
           <TransactionListCard 
             title="Emergency Fund Master" type="EmergencyBuffer" items={[{ id: 'emergency_buffer', value: emergency_buffer, currency: currency, name: 'Designated Cash Buffer' }]} 

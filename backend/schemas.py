@@ -32,6 +32,7 @@ class AccountCreate(AccountBase):
 class Account(AccountBase):
     id: int
     user_id: int
+    current_balance: Optional[float] = None
     class Config:
         from_attributes = True
 
@@ -42,6 +43,7 @@ class IncomeBase(BaseModel):
     currency: str
     frequency: str = "monthly"
     date: Optional[datetime] = None
+    account_id: Optional[int] = None
 
 class IncomeCreate(IncomeBase):
     pass
@@ -60,6 +62,7 @@ class ExpenseBase(BaseModel):
     currency: str
     frequency: str = "monthly"
     date: Optional[datetime] = None
+    account_id: Optional[int] = None
 
 class ExpenseCreate(ExpenseBase):
     pass
@@ -85,5 +88,24 @@ class Goal(GoalBase):
     user_id: Optional[int]
     household_id: Optional[int]
     created_at: datetime
+    class Config:
+        from_attributes = True
+
+# --- Transfer schemas ---
+class TransferBase(BaseModel):
+    from_account_id: int
+    to_account_id: int
+    amount: float
+    currency: str
+    date: Optional[datetime] = None
+    note: Optional[str] = None
+
+class TransferCreate(TransferBase):
+    pass
+
+class Transfer(TransferBase):
+    id: int
+    user_id: int
+
     class Config:
         from_attributes = True

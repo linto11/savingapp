@@ -15,6 +15,7 @@ class User(Base):
     incomes = relationship("Income", back_populates="user")
     expenses = relationship("Expense", back_populates="user")
     goals = relationship("Goal", back_populates="user")
+    transfers = relationship("Transfer", back_populates="user")
 
 class Household(Base):
     __tablename__ = "households"
@@ -33,6 +34,10 @@ class Account(Base):
     initial_balance = Column(Float, default=0.0)
 
     user = relationship("User", back_populates="accounts")
+    incomes = relationship("Income", back_populates="account")
+    expenses = relationship("Expense", back_populates="account")
+    outgoing_transfers = relationship("Transfer", foreign_keys="Transfer.from_account_id", back_populates="from_account")
+    incoming_transfers = relationship("Transfer", foreign_keys="Transfer.to_account_id", back_populates="to_account")
 
 class Income(Base):
     __tablename__ = "incomes"
@@ -43,8 +48,10 @@ class Income(Base):
     currency = Column(String)
     frequency = Column(String, default="monthly")
     date = Column(DateTime, nullable=True)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
 
     user = relationship("User", back_populates="incomes")
+    account = relationship("Account", back_populates="incomes")
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -55,8 +62,25 @@ class Expense(Base):
     currency = Column(String)
     frequency = Column(String, default="monthly")
     date = Column(DateTime, nullable=True)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
 
     user = relationship("User", back_populates="expenses")
+    account = relationship("Account", back_populates="expenses")
+
+class Transfer(Base):
+    __tablename__ = "transfers"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    from_account_id = Column(Integer, ForeignKey("accounts.id"))
+    to_account_id = Column(Integer, ForeignKey("accounts.id"))
+    amount = Column(Float)
+    currency = Column(String)
+    date = Column(DateTime, nullable=True)
+    note = Column(String, nullable=True)
+
+    user = relationship("User", back_populates="transfers")
+    from_account = relationship("Account", foreign_keys=[from_account_id], back_populates="outgoing_transfers")
+    to_account = relationship("Account", foreign_keys=[to_account_id], back_populates="incoming_transfers")
 
 class Goal(Base):
     __tablename__ = "goals"

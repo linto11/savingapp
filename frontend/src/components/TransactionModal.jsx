@@ -4,6 +4,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
   const [type, setType] = useState(initialType || 'Income')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [accounts, setAccounts] = useState([])
 
   // Map backend raw format appropriately
   const [name, setName] = useState('')
@@ -11,6 +12,18 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
   const [txnCurrency, setTxnCurrency] = useState(currency || 'AED')
   const [targetDate, setTargetDate] = useState('')
   const [txnDate, setTxnDate] = useState(new Date().toISOString().split('T')[0])
+  const [accountId, setAccountId] = useState('')
+  const [fromAccountId, setFromAccountId] = useState('')
+  const [toAccountId, setToAccountId] = useState('')
+  const [note, setNote] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) return
+    fetch('/api/accounts')
+      .then(res => res.json())
+      .then(rows => setAccounts(rows || []))
+      .catch(() => setAccounts([]))
+  }, [isOpen])
 
   useEffect(() => {
     if (initialData) {
@@ -32,6 +45,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
         setName(initialData.source || '')
         setAmount(initialData.amount || '')
         setTxnCurrency(initialData.currency || currency)
+        setAccountId(initialData.account_id ? String(initialData.account_id) : '')
         if (initialData.date) {
             setTxnDate(initialData.date.split('T')[0])
         }
@@ -39,8 +53,18 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
         setName(initialData.category || '')
         setAmount(initialData.amount || '')
         setTxnCurrency(initialData.currency || currency)
+        setAccountId(initialData.account_id ? String(initialData.account_id) : '')
         if (initialData.date) {
             setTxnDate(initialData.date.split('T')[0])
+        }
+      } else if (type === 'Transfer') {
+        setAmount(initialData.amount || '')
+        setTxnCurrency(initialData.currency || currency)
+        setFromAccountId(initialData.from_account_id ? String(initialData.from_account_id) : '')
+        setToAccountId(initialData.to_account_id ? String(initialData.to_account_id) : '')
+        setNote(initialData.note || '')
+        if (initialData.date) {
+          setTxnDate(initialData.date.split('T')[0])
         }
       }
     } else {
@@ -51,8 +75,12 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
       setTargetDate('')
       setTxnDate(new Date().toISOString().split('T')[0])
       setTxnCurrency(currency || 'AED')
+      setAccountId('')
+      setFromAccountId('')
+      setToAccountId('')
+      setNote('')
     }
-  }, [initialData, initialType, currency])
+  }, [initialData, initialType, currency, type])
 
   if (!isOpen) return null
 
@@ -63,6 +91,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
       case 'Expense': return 'expenses'
       case 'Goal': return 'goals'
       case 'Account': return 'accounts'
+      case 'Transfer': return 'transfers'
       default: return 'incomes'
     }
   }
@@ -96,10 +125,10 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
 
     if (type === 'Income') {
       let isoDate = txnDate ? new Date(txnDate).toISOString() : null
-      payload = { source: name, amount: parseFloat(amount), currency: txnCurrency, frequency: 'monthly', date: isoDate }
+      payload = { source: name, amount: parseFloat(amount), currency: txnCurrency, frequency: 'monthly', date: isoDate, account_id: accountId ? parseInt(accountId, 10) : null }
     } else if (type === 'Expense') {
       let isoDate = txnDate ? new Date(txnDate).toISOString() : null
-      payload = { category: name, amount: parseFloat(amount), currency: txnCurrency, frequency: 'monthly', date: isoDate }
+      payload = { category: name, amount: parseFloat(amount), currency: txnCurrency, frequency: 'monthly', date: isoDate, account_id: accountId ? parseInt(accountId, 10) : null }
     } else if (type === 'Goal') {
       let isoDate = null
       if (targetDate) {
@@ -108,6 +137,22 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
       payload = { name: name, target_amount: parseFloat(amount), currency: txnCurrency, target_date: isoDate }
     } else if (type === 'Account') {
       payload = { name: name, country: 'Unknown', currency: txnCurrency, initial_balance: parseFloat(amount) }
+    } else if (type === 'Transfer') {
+      if (!fromAccountId || !toAccountId) {
+        throw new Error('Both source and destination account are required')
+      }
+      if (fromAccountId === toAccountId) {
+        throw new Error('Source and destination account must be different')
+      }
+      let isoDate = txnDate ? new Date(txnDate).toISOString() : null
+      payload = {
+        from_account_id: parseInt(fromAccountId, 10),
+        to_account_id: parseInt(toAccountId, 10),
+        amount: parseFloat(amount),
+        currency: txnCurrency,
+        date: isoDate,
+        note: note || null,
+      }
     }
 
     try {
@@ -146,7 +191,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
 
         {!initialData && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-            {['Income', 'Expense', 'Goal', 'Account'].map(t => (
+            {['Income', 'Expense', 'Goal', 'Account', 'Transfer'].map(t => (
               <button 
                 key={t}
                 onClick={() => setType(t)}
@@ -170,19 +215,66 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
-              {type === 'Goal' ? 'Goal Name' : type === 'Account' ? 'Bank Name' : type === 'Expense' ? 'Category' : 'Source'}
+              {type === 'Goal' ? 'Goal Name' : type === 'Account' ? 'Bank Name' : type === 'Expense' ? 'Category' : type === 'Transfer' ? 'Transfer Label' : 'Source'}
             </label>
             <input 
-              required
+              required={type !== 'Transfer'}
               value={name}
               onChange={e => setName(e.target.value)}
+              placeholder={type === 'Transfer' ? 'Optional note title' : ''}
               style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
             />
           </div>
 
+          {(type === 'Income' || type === 'Expense') && (
+            <div>
+              <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>Bank Account</label>
+              <select
+                value={accountId}
+                onChange={e => setAccountId(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+              >
+                <option value="">Default (Linto - ENBD)</option>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {type === 'Transfer' && (
+            <div>
+              <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>From Account</label>
+              <select
+                required
+                value={fromAccountId}
+                onChange={e => setFromAccountId(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white', marginBottom: '12px' }}
+              >
+                <option value="">Select source account</option>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+                ))}
+              </select>
+
+              <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>To Account</label>
+              <select
+                required
+                value={toAccountId}
+                onChange={e => setToAccountId(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+              >
+                <option value="">Select destination account</option>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
-              {type === 'Goal' ? 'Target Amount' : type === 'Account' ? 'Initial Balance' : 'Monthly Amount'}
+              {type === 'Goal' ? 'Target Amount' : type === 'Account' ? 'Initial Balance' : type === 'Transfer' ? 'Transfer Amount' : 'Monthly Amount'}
             </label>
             <input 
               required type="number" step="0.01"
@@ -205,7 +297,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
             </select>
           </div>
 
-          {(type === 'Income' || type === 'Expense') && (
+          {(type === 'Income' || type === 'Expense' || type === 'Transfer') && (
             <div>
               <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>Date</label>
               <input 
@@ -224,6 +316,18 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
                 required type="date"
                 value={targetDate}
                 onChange={e => setTargetDate(e.target.value)}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+              />
+            </div>
+          )}
+
+          {type === 'Transfer' && (
+            <div>
+              <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>Note</label>
+              <input
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Optional"
                 style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
               />
             </div>
