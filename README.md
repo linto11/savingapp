@@ -75,20 +75,63 @@ This copies your existing local [savings.db](savings.db) records into Supabase/P
 
 The frontend serves the UI/UX dashboard. Open a **brand new** secondary terminal window.
 
-1. Navigate strictly into the `frontend` directory:
-   ```bash
-   cd frontend
-   ```
-2. Install all the React packages and UI dependencies:
-   ```bash
-   npm install
-   ```
-3. Boot the Vite development server:
-   ```bash
-   npm run dev
-   ```
+You can use either of these clone-friendly options:
 
-A localhost link (usually `http://localhost:5173/` or the next free port) will appear in your terminal. Click it to open your application!
+#### Option A: run from the repository root
+
+```bash
+npm run frontend:install
+npm run dev
+```
+
+#### Option B: run from inside the frontend folder
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+A localhost link (usually `http://localhost:5173/` or the next free port) will appear in your terminal. Click it to open your application.
+
+### 3. Local quick start after cloning
+
+Once dependencies are installed, the shortest local workflow is:
+
+**Terminal 1**
+```bash
+npm run backend:dev
+```
+
+**Terminal 2**
+```bash
+npm run dev
+```
+
+This keeps local development working automatically through the Vite proxy to the FastAPI backend.
+
+## Deploying for production
+
+To make the app work on Netlify **and** continue to work locally after cloning, the repository now separates the deployment responsibilities clearly:
+
+- Netlify hosts the React frontend using [netlify.toml](netlify.toml)
+- the Python API should be hosted separately using [render.yaml](render.yaml), [Procfile](Procfile), and [requirements.txt](requirements.txt)
+- Netlify should have the environment variable `VITE_API_BASE_URL` set to the public URL of the hosted backend
+- once the backend is reachable, the Settings screen can safely switch the app to Supabase for persistent hosted data
+
+### Recommended hosted setup
+
+1. Deploy the backend to Render or Railway from this repository.
+2. Start command should serve `backend.api.app:app` on the platform port.
+3. Deploy the frontend to Netlify.
+4. In Netlify environment variables, set `VITE_API_BASE_URL` to your backend URL, for example:
+
+```bash
+VITE_API_BASE_URL=https://your-backend-service.onrender.com
+```
+
+5. Redeploy the Netlify site.
+6. Open Settings in the app and complete the Supabase connection details if you want hosted persistence.
 
 ## Graphify for New Contributors
 

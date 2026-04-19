@@ -1,0 +1,10 @@
+{
+  "name": "savingsapp-workspace",
+  "private": true,
+  "scripts": {
+    "frontend:install": "npm --prefix frontend install",
+    "dev": "npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173",
+    "build": "npm --prefix frontend run build",
+    "backend:dev": "python -m uvicorn backend.api.app:app --host 127.0.0.1 --port 8000 --reload"
+  }
+}
