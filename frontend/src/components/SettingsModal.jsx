@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/api'
 
 export default function SettingsModal({ isOpen, onClose, onRefresh }) {
   const [settings, setSettings] = useState(null)
@@ -11,8 +12,8 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
     if (isOpen) {
       setLoading(true)
       Promise.all([
-        fetch('/api/settings').then(res => res.json()),
-        fetch('/api/settings/sync-status').then(res => res.json()),
+        apiFetch('/settings').then(res => res.json()),
+        apiFetch('/settings/sync-status').then(res => res.json()),
       ])
         .then(([data, status]) => {
           setSettings(data)
@@ -34,7 +35,7 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
     setError(null)
 
     try {
-      const response = await fetch('/api/settings', {
+      const response = await apiFetch('/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)

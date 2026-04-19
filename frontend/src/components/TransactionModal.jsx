@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { apiFetch, apiUrl } from '../lib/api'
 
 export default function TransactionModal({ isOpen, onClose, onRefresh, currency, initialType, initialData }) {
   const [type, setType] = useState(initialType || 'Income')
@@ -32,7 +33,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
 
   useEffect(() => {
     if (!isOpen) return
-    fetch('/api/accounts')
+    apiFetch('/accounts')
       .then(res => res.json())
       .then(rows => setAccounts(rows || []))
       .catch(() => setAccounts([]))
@@ -114,7 +115,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
     setLoading(true)
     try {
       const ep = getEndpoint(type)
-      const response = await fetch(`/api/${ep}/${initialData.id}`, { method: 'DELETE' })
+      const response = await fetch(apiUrl(`/${ep}/${initialData.id}`), { method: 'DELETE' })
       if (!response.ok) throw new Error("Failed to delete transaction")
       onRefresh()
       onClose()
@@ -167,7 +168,7 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
 
     try {
       const isEdit = initialData && initialData.id
-      const url = `/api/${ep}` + (isEdit ? `/${initialData.id}` : '')
+      const url = apiUrl(`/${ep}` + (isEdit ? `/${initialData.id}` : ''))
       const method = isEdit ? 'PUT' : 'POST'
 
       const response = await fetch(url, {

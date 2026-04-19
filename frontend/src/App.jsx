@@ -4,6 +4,7 @@ import Ledger from './views/Ledger'
 import Forecast from './views/Forecast'
 import TransactionModal from './components/TransactionModal'
 import SettingsModal from './components/SettingsModal'
+import { apiFetch, API_BASE_URL } from './lib/api'
 import './index.css'
 
 function getDefaultForecastDate() {
@@ -48,7 +49,7 @@ function App() {
   const [selectedForecastDate, setSelectedForecastDate] = useState(getDefaultForecastDate())
 
   useEffect(() => {
-    fetch('/api/settings')
+    apiFetch('/settings')
       .then(res => res.json())
       .then(settings => {
         if (settings?.base_currency) {
@@ -71,15 +72,15 @@ function App() {
     const forecastMonths = getForecastMonths(selectedForecastDate)
 
     Promise.allSettled([
-      fetch(`/api/dashboard/summary?target_currency=${baseCurrency}`).then(res => {
+      apiFetch(`/dashboard/summary?target_currency=${baseCurrency}`).then(res => {
         if (!res.ok) throw new Error('Failed to load dashboard summary')
         return res.json()
       }),
-      fetch(`/api/forecast/projection?target_currency=${baseCurrency}&months_ahead=${forecastMonths}&selected_date=${selectedForecastDate}`).then(res => {
+      apiFetch(`/forecast/projection?target_currency=${baseCurrency}&months_ahead=${forecastMonths}&selected_date=${selectedForecastDate}`).then(res => {
         if (!res.ok) throw new Error('Failed to load forecast projection')
         return res.json()
       }),
-      fetch('/api/settings/sync-status').then(res => {
+      apiFetch('/settings/sync-status').then(res => {
         if (!res.ok) throw new Error('Failed to load database sync status')
         return res.json()
       })
@@ -203,7 +204,15 @@ function App() {
           />
         )
       ) : (
-        <p>No dashboard data reachable. Ensure backend is running.</p>
+        <div className="glass-card">
+          <p>No dashboard data reachable.</p>
+          <p className="text-sm text-secondary" style={{ marginTop: '8px' }}>
+            If this site is on Netlify, set the VITE_API_BASE_URL environment variable to your hosted FastAPI backend URL.
+          </p>
+          <p className="text-xs text-secondary" style={{ marginTop: '6px' }}>
+            Current API target: {API_BASE_URL}
+          </p>
+        </div>
       )}
 
       {isModalOpen && (
