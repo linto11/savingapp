@@ -1,0 +1,17 @@
+{
+  "base_currency": "AED",
+  "exchange_rates": {
+    "AED": 1,
+    "USD": 0.27,
+    "INR": 25.5
+  },
+  "emergency_buffer": 50000,
+  "database_mode": "sqlite",
+  "database_choice_confirmed": false,
+  "sync_to_supabase": false,
+  "supabase_db_host": "aws-1-ap-northeast-1.pooler.supabase.com",
+  "supabase_db_user": "postgres",
+  "supabase_db_name": "postgres",
+  "supabase_db_port": 5432,
+  "account_link_migration_version": 2
+}

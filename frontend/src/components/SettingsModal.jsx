@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 
 export default function SettingsModal({ isOpen, onClose, onRefresh }) {
   const [settings, setSettings] = useState(null)
+  const [syncStatus, setSyncStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -9,10 +10,13 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
   useEffect(() => {
     if (isOpen) {
       setLoading(true)
-      fetch('/api/settings')
-        .then(res => res.json())
-        .then(data => {
+      Promise.all([
+        fetch('/api/settings').then(res => res.json()),
+        fetch('/api/settings/sync-status').then(res => res.json()),
+      ])
+        .then(([data, status]) => {
           setSettings(data)
+          setSyncStatus(status)
           setLoading(false)
         })
         .catch(err => {
@@ -28,13 +32,17 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
     e.preventDefault()
     setSaving(true)
     setError(null)
+
     try {
       const response = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
       })
-      if (!response.ok) throw new Error('Failed to save settings')
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.detail || 'Failed to save settings')
+
       onRefresh()
       onClose()
     } catch (err) {
@@ -58,9 +66,9 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
       background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center',
       zIndex: 1000, backdropFilter: 'blur(5px)'
     }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', background: '#1a1d24' }}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: '520px', background: '#1a1d24' }}>
         <div className="header" style={{ marginBottom: '16px' }}>
-          <h2 className="text-xl font-bold">Emergency Fund Setup</h2>
+          <h2 className="text-xl font-bold">App & Database Setup</h2>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>&times;</button>
         </div>
 
@@ -69,7 +77,127 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {error && <p className="text-danger text-sm">{error}</p>}
+
+            <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
+              <div className="text-sm" style={{ fontWeight: 600, marginBottom: '6px' }}>
+                Current Database Status
+              </div>
+              <p className="text-xs text-secondary">
+                Active provider: {syncStatus?.active_provider === 'supabase' ? 'Supabase' : 'SQLite'}
+              </p>
+              <p className="text-xs text-secondary" style={{ marginTop: '4px' }}>
+                Sync state: {syncStatus?.sync_enabled ? (syncStatus?.in_sync ? 'In sync' : 'Not synced yet') : 'Disabled'}
+              </p>
+              {syncStatus?.reason && (
+                <p className="text-xs text-secondary" style={{ marginTop: '4px' }}>
+                  {syncStatus.reason}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
+                Data Source
+              </label>
+              <select
+                name="database_mode"
+                value={settings.database_mode || 'sqlite'}
+                onChange={handleChange}
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+              >
+                <option value="sqlite">SQLite (Local device)</option>
+                <option value="supabase">Supabase Postgres</option>
+              </select>
+              <p className="text-xs text-secondary" style={{ marginTop: '8px' }}>
+                Active connection: {settings.database_provider_active === 'supabase' ? 'Supabase' : 'SQLite'}
+              </p>
+            </div>
+
+            {(settings.database_mode === 'supabase' || settings.sync_to_supabase) && (
+              <>
+                <div>
+                  <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
+                    Supabase Project URL
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.supabase_project_url || ''}
+                    readOnly
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.35)', color: 'white' }}
+                  />
+                  <p className="text-xs text-secondary" style={{ marginTop: '8px' }}>
+                    Pooler host: {settings.supabase_db_host || 'aws-1-ap-northeast-1.pooler.supabase.com'}
+                  </p>
+                  <p className="text-xs text-secondary" style={{ marginTop: '4px' }}>
+                    Database user: {settings.supabase_db_user || 'postgres.vtflzxqdvmodpbeonfue'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
+                    Supabase Publishable Key
+                  </label>
+                  <input
+                    type="password"
+                    name="supabase_api_key"
+                    value={settings.supabase_api_key || ''}
+                    onChange={handleChange}
+                    placeholder={settings.supabase_key_saved ? 'Already entered for this session — enter only to update it' : 'Enter your Supabase publishable key'}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
+                    Supabase DB Password
+                  </label>
+                  <input
+                    type="password"
+                    name="supabase_db_password"
+                    value={settings.supabase_db_password || ''}
+                    onChange={handleChange}
+                    placeholder={settings.supabase_password_saved ? 'Already entered for this session — enter only to update it' : 'Enter your Postgres password'}
+                    required={!settings.supabase_password_saved && !settings.supabase_connection_string}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+                  />
+                  <p className="text-xs text-secondary" style={{ marginTop: '8px' }}>
+                    These values are used only for the current session and are not written to repository files.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {settings.database_mode === 'sqlite' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
+                <input
+                  type="checkbox"
+                  name="sync_to_supabase"
+                  checked={Boolean(settings.sync_to_supabase)}
+                  onChange={(e) => setSettings(prev => ({ ...prev, sync_to_supabase: e.target.checked }))}
+                />
+                <span className="text-sm">Keep local SQLite mirrored to Supabase for hosted use (one-way sync)</span>
+              </label>
+            )}
             
+            {(settings.database_mode === 'supabase' || settings.sync_to_supabase) && (
+              <div>
+                <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
+                  Supabase Connection String (optional, recommended for Netlify/pooler)
+                </label>
+                <input
+                  type="password"
+                  name="supabase_connection_string"
+                  value={settings.supabase_connection_string || ''}
+                  onChange={handleChange}
+                  placeholder="Paste the Supabase pooler or Postgres connection string"
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+                />
+                <p className="text-xs text-secondary" style={{ marginTop: '8px' }}>
+                  This is the best option for Netlify or networks where the direct database host is restricted.
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>
                 Base Currency

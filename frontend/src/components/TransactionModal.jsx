@@ -17,6 +17,19 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
   const [toAccountId, setToAccountId] = useState('')
   const [note, setNote] = useState('')
 
+  const resetForm = () => {
+    setName('')
+    setAmount('')
+    setTargetDate('')
+    setTxnDate(new Date().toISOString().split('T')[0])
+    setTxnCurrency(currency || 'AED')
+    setAccountId('')
+    setFromAccountId('')
+    setToAccountId('')
+    setNote('')
+    setError(null)
+  }
+
   useEffect(() => {
     if (!isOpen) return
     fetch('/api/accounts')
@@ -26,61 +39,58 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
   }, [isOpen])
 
   useEffect(() => {
+    if (!isOpen || initialData || accounts.length === 0) return
+    if ((type === 'Income' || type === 'Expense') && !accountId) {
+      const defaultAccount = accounts.find(a => a.name === 'Linto - ENBD') || accounts[0]
+      if (defaultAccount) {
+        setAccountId(String(defaultAccount.id))
+      }
+    }
+  }, [isOpen, initialData, accounts, type, accountId])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const activeType = initialType || 'Income'
+
     if (initialData) {
-      if (type === 'Goal') {
+      setType(activeType)
+      setError(null)
+
+      if (activeType === 'Goal') {
         setName(initialData.name || '')
         setAmount(initialData.target_amount || '')
-        
-        if (initialData.target_date) {
-            setTargetDate(initialData.target_date.split('T')[0])
-        } else {
-            setTargetDate('')
-        }
+        setTargetDate(initialData.target_date ? initialData.target_date.split('T')[0] : '')
         setTxnCurrency(initialData.currency || currency)
-      } else if (type === 'Account') {
+      } else if (activeType === 'Account') {
         setName(initialData.name || '')
         setAmount(initialData.initial_balance || '')
         setTxnCurrency(initialData.currency || currency)
-      } else if (type === 'Income') {
+      } else if (activeType === 'Income') {
         setName(initialData.source || '')
         setAmount(initialData.amount || '')
         setTxnCurrency(initialData.currency || currency)
         setAccountId(initialData.account_id ? String(initialData.account_id) : '')
-        if (initialData.date) {
-            setTxnDate(initialData.date.split('T')[0])
-        }
-      } else if (type === 'Expense') {
+        setTxnDate(initialData.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0])
+      } else if (activeType === 'Expense') {
         setName(initialData.category || '')
         setAmount(initialData.amount || '')
         setTxnCurrency(initialData.currency || currency)
         setAccountId(initialData.account_id ? String(initialData.account_id) : '')
-        if (initialData.date) {
-            setTxnDate(initialData.date.split('T')[0])
-        }
-      } else if (type === 'Transfer') {
+        setTxnDate(initialData.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0])
+      } else if (activeType === 'Transfer') {
         setAmount(initialData.amount || '')
         setTxnCurrency(initialData.currency || currency)
         setFromAccountId(initialData.from_account_id ? String(initialData.from_account_id) : '')
         setToAccountId(initialData.to_account_id ? String(initialData.to_account_id) : '')
         setNote(initialData.note || '')
-        if (initialData.date) {
-          setTxnDate(initialData.date.split('T')[0])
-        }
+        setTxnDate(initialData.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0])
       }
     } else {
-      setType(initialType || 'Income')
-      // Reset forms
-      setName('')
-      setAmount('')
-      setTargetDate('')
-      setTxnDate(new Date().toISOString().split('T')[0])
-      setTxnCurrency(currency || 'AED')
-      setAccountId('')
-      setFromAccountId('')
-      setToAccountId('')
-      setNote('')
+      setType(activeType)
+      resetForm()
     }
-  }, [initialData, initialType, currency, type])
+  }, [isOpen, initialData, initialType, currency])
 
   if (!isOpen) return null
 
@@ -194,7 +204,11 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
             {['Income', 'Expense', 'Goal', 'Account', 'Transfer'].map(t => (
               <button 
                 key={t}
-                onClick={() => setType(t)}
+                type="button"
+                onClick={() => {
+                  setType(t)
+                  resetForm()
+                }}
                 style={{
                   flex: 1, padding: '8px', borderRadius: '4px', border: 'none',
                   background: type === t ? 'var(--accent-color)' : 'rgba(255,255,255,0.1)',
@@ -230,15 +244,19 @@ export default function TransactionModal({ isOpen, onClose, onRefresh, currency,
             <div>
               <label className="text-sm text-secondary" style={{ display: 'block', marginBottom: '8px' }}>Bank Account</label>
               <select
+                required
                 value={accountId}
                 onChange={e => setAccountId(e.target.value)}
                 style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
               >
-                <option value="">Default (Linto - ENBD)</option>
+                <option value="">Select bank account</option>
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
                 ))}
               </select>
+              <p className="text-xs text-secondary" style={{ marginTop: '6px' }}>
+                This entry will update the selected account balance.
+              </p>
             </div>
           )}
 

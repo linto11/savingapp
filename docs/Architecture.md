@@ -1,27 +1,41 @@
 # System Architecture
 
-The Multi-Currency Savings App runs on a strict decoupled architecture mapping React States directly to SQLAlchemy records.
+The backend now follows a much cleaner composition style instead of keeping all logic in one route file.
 
-## Component Breakdown
+## Current backend structure
 
-### 1. Database (SQLite via SQLAlchemy)
-- Resides purely locally.
-- Protected from dropping elements via restrictive `ALTER TABLE` upgrades in backend lifecycles.
-- Contains 4 Core Master tables: `Account`, `Income`, `Expense`, and `Goal`. 
+- API app entry: [backend/api/app.py](backend/api/app.py)
+- API dependencies: [backend/api/dependencies.py](backend/api/dependencies.py)
+- Route handlers: [backend/api/routers](backend/api/routers)
+- Core configuration and startup logic: [backend/core](backend/core)
+- Business services: [backend/services](backend/services)
+- Domain models and DTOs: [backend/domain](backend/domain)
+- Infrastructure and database wiring: [backend/infrastructure](backend/infrastructure)
 
-### 2. The Python FastAPI Backend
-- Acts as a pure calculation server.
-- Intercepts all REST calls from the Frontend UI.
-- Contains a globally active `/dashboard/summary` endpoint that maps thousands of inputs into aggregated variables.
-- Houses the mathematical **Waterfall Sequence Algorithm** which physically cascades the user's Net Savings Pool (`Total Bank + Total Income - Total Expense`) down a chronologically-sorted list of Goal Targets.
+## Current frontend structure
 
-### 3. The React/Vite Frontend
-- Acts purely as an interactive dashboard. 
-- Performs ZERO mathematical calculations. Absolutely all currency conversions and goal pending equations are physically handed to it by FastAPI.
-- Relies exclusively on `useState` variables in the Root Layer to handle Native UI Routing (e.g. Toggling from Dashboard to the Accordion Ledger block).
+- App shell and data loading: [frontend/src/App.jsx](frontend/src/App.jsx)
+- Main views: Dashboard, Ledger, and Forecast under [frontend/src/views](frontend/src/views)
+- Reusable UI pieces such as settings and transaction modals under [frontend/src/components](frontend/src/components)
 
-### 4. Rule Protections
-1. All mathematical conversions lock safely utilizing `.toLocaleString({maximumFractionDigits: 2})` natively.
-2. The Database is mathematically locked strictly to `savings.db`. 
+## Layer responsibilities
 
-Because of this decoupled nature, the entire Python API server can be moved to a remote Docker instance without making any severe changes to the Frontend stack aside from a single root Domain URL update.
+### API layer
+The router files under [backend/api/routers](backend/api/routers) now own HTTP concerns only.
+
+### Core layer
+The startup and schema compatibility behavior has been moved into [backend/core/bootstrap.py](backend/core/bootstrap.py).
+
+### Service layer
+Forecast logic, dashboard aggregation, and SQLite to Supabase sync logic are kept in [backend/services](backend/services).
+
+## Sync and migration logic
+
+The SQLite to Supabase migration and comparison logic now lives in [backend/services/db_sync.py](backend/services/db_sync.py).
+The live connection and sync indicator shown in the UI is backed by the settings and sync-status endpoints exposed from the API layer.
+
+## Development knowledge graph
+
+A Graphify-based development reference has been added so the codebase can be explored as a local knowledge graph.
+See [docs/DevelopmentGraph.md](docs/DevelopmentGraph.md), the landing page [graphify-out/README.md](graphify-out/README.md), the interactive graph [graphify-out/graph.html](graphify-out/graph.html), and the generated report [graphify-out/GRAPH_REPORT.md](graphify-out/GRAPH_REPORT.md).
+

@@ -1,13 +1,43 @@
 import { useState, useEffect } from 'react'
 import Dashboard from './views/Dashboard'
 import Ledger from './views/Ledger'
+import Forecast from './views/Forecast'
 import TransactionModal from './components/TransactionModal'
 import SettingsModal from './components/SettingsModal'
 import './index.css'
 
+function getDefaultForecastDate() {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() + 1)
+  return date.toISOString().split('T')[0]
+}
+
+function getForecastMonths(dateString) {
+  const today = new Date()
+  const selected = new Date(dateString)
+
+  if (Number.isNaN(selected.getTime())) {
+    return 12
+  }
+
+  let months = ((selected.getFullYear() - today.getFullYear()) * 12) + (selected.getMonth() - today.getMonth())
+  if (selected.getDate() >= today.getDate()) {
+    months += 1
+  }
+
+  return Math.max(months, 12)
+}
+
 function App() {
   const [data, setData] = useState(null)
+  const [forecastData, setForecastData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [dbStatus, setDbStatus] = useState({
+    active_provider: 'sqlite',
+    sync_enabled: false,
+    in_sync: false,
+    reason: 'Checking database status...',
+  })
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
@@ -15,23 +45,74 @@ function App() {
   const [modalInitialData, setModalInitialData] = useState(null)
   
   const [baseCurrency, setBaseCurrency] = useState('AED')
+  const [selectedForecastDate, setSelectedForecastDate] = useState(getDefaultForecastDate())
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(settings => {
+        if (settings?.base_currency) {
+          setBaseCurrency(settings.base_currency)
+        }
+        setDbStatus(prev => ({
+          ...prev,
+          active_provider: settings?.database_provider_active || 'sqlite',
+          sync_enabled: Boolean(settings?.sync_to_supabase),
+        }))
+        if (!settings?.database_choice_confirmed) {
+          setIsSettingsOpen(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchDashboard = () => {
-    fetch(`/api/dashboard/summary?target_currency=${baseCurrency}`)
-      .then(res => res.json())
-      .then(d => {
-        setData(d)
-        setLoading(false)
+    setLoading(true)
+    const forecastMonths = getForecastMonths(selectedForecastDate)
+
+    Promise.allSettled([
+      fetch(`/api/dashboard/summary?target_currency=${baseCurrency}`).then(res => {
+        if (!res.ok) throw new Error('Failed to load dashboard summary')
+        return res.json()
+      }),
+      fetch(`/api/forecast/projection?target_currency=${baseCurrency}&months_ahead=${forecastMonths}&selected_date=${selectedForecastDate}`).then(res => {
+        if (!res.ok) throw new Error('Failed to load forecast projection')
+        return res.json()
+      }),
+      fetch('/api/settings/sync-status').then(res => {
+        if (!res.ok) throw new Error('Failed to load database sync status')
+        return res.json()
       })
-      .catch(err => {
-        console.error(err)
+    ])
+      .then(([summaryResult, forecastResult, syncResult]) => {
+        if (summaryResult.status === 'fulfilled') {
+          setData(summaryResult.value)
+        } else {
+          console.error(summaryResult.reason)
+          setData(null)
+        }
+
+        if (forecastResult.status === 'fulfilled') {
+          setForecastData(forecastResult.value)
+        } else {
+          console.error(forecastResult.reason)
+          setForecastData(null)
+        }
+
+        if (syncResult.status === 'fulfilled') {
+          setDbStatus(syncResult.value)
+        } else {
+          console.error(syncResult.reason)
+        }
+      })
+      .finally(() => {
         setLoading(false)
       })
   }
 
   useEffect(() => {
     fetchDashboard()
-  }, [baseCurrency])
+  }, [baseCurrency, selectedForecastDate])
 
   const handleOpenAddNew = () => {
     setModalType('Income')
@@ -59,6 +140,14 @@ function App() {
         <div>
           <h1 className="text-2xl font-bold">Savings Planner</h1>
           <p className="text-secondary text-sm">Joint Household View</p>
+          <div className="status-pill-row">
+            <span className={`status-pill ${dbStatus.active_provider === 'supabase' ? 'status-pill-success' : 'status-pill-info'}`}>
+              {dbStatus.active_provider === 'supabase' ? 'Connected to Supabase' : 'Connected to SQLite'}
+            </span>
+            <span className={`status-pill ${dbStatus.in_sync ? 'status-pill-success' : dbStatus.sync_enabled ? 'status-pill-warning' : 'status-pill-muted'}`}>
+              {dbStatus.sync_enabled ? (dbStatus.in_sync ? 'Sync OK' : 'Sync needs setup') : 'Sync off'}
+            </span>
+          </div>
         </div>
         <div className="header-actions">
           <select 
@@ -70,6 +159,10 @@ function App() {
             <option value="USD">Display in USD</option>
             <option value="INR">Display in INR</option>
           </select>
+          <button className="btn icon-text" onClick={() => setIsSettingsOpen(true)}>
+            <span className="material-symbols-outlined">settings</span>
+            Settings
+          </button>
         </div>
       </header>
 
@@ -88,13 +181,26 @@ function App() {
         >
           <span className="material-symbols-outlined">receipt_long</span> Monthly Ledger
         </button>
+        <button 
+          onClick={() => setActiveTab('forecast')}
+          style={{ background: 'none', border: 'none', color: activeTab === 'forecast' ? 'var(--accent-color)' : 'var(--secondary-color)', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderBottom: activeTab === 'forecast' ? '2px solid var(--accent-color)' : 'none', paddingBottom: '12px', marginBottom: '-14px', transition: '0.2s' }}
+          className="icon-text hover:text-white"
+        >
+          <span className="material-symbols-outlined">insights</span> Forecast
+        </button>
       </nav>
 
       {data ? (
         activeTab === 'dashboard' ? (
           <Dashboard summaryData={data} onEdit={handleEdit} />
-        ) : (
+        ) : activeTab === 'ledger' ? (
           <Ledger summaryData={data} onEdit={handleEdit} onAddNew={handleOpenAddNew} currency={baseCurrency} />
+        ) : (
+          <Forecast 
+            forecastData={forecastData}
+            selectedDate={selectedForecastDate}
+            onSelectedDateChange={setSelectedForecastDate}
+          />
         )
       ) : (
         <p>No dashboard data reachable. Ensure backend is running.</p>

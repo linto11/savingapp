@@ -1,8 +1,0 @@
-{
-  "base_currency": "AED",
-  "exchange_rates": {
-    "AED": 1.0,
-    "USD": 0.27,
-    "INR": 25.5
-  }
-}

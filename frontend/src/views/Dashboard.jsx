@@ -6,6 +6,7 @@ export default function Dashboard({ summaryData, onEdit }) {
     currency, 
     initial_savings, 
     emergency_buffer = 0,
+    available_for_goals = Math.max(initial_savings - emergency_buffer, 0),
     income_monthly, 
     expense_monthly, 
     net_savings_monthly, 
@@ -58,6 +59,9 @@ export default function Dashboard({ summaryData, onEdit }) {
             >
               <div>
                 <p className="font-semibold text-sm">{formatter(item).name}</p>
+                {formatter(item).secondary && (
+                  <p className="text-xs text-secondary" style={{ marginTop: '4px' }}>{formatter(item).secondary}</p>
+                )}
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <p className="font-bold text-sm" style={{ color: type === 'Expense' ? 'var(--danger-color)' : 'inherit', whiteSpace: 'nowrap' }}>
@@ -99,32 +103,47 @@ export default function Dashboard({ summaryData, onEdit }) {
 
   return (
     <div>
-      <div className="flow-container">
-        <div className="flow-step">
-          <h2 className="text-xl font-bold icon-text" style={{ marginBottom: '16px' }}><span className="material-symbols-outlined">payments</span> Income Master</h2>
-          <p className="text-2xl font-bold text-success" style={{ whiteSpace: 'nowrap' }}>+{income_monthly.toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-sm font-normal">{currency}</span></p>
+      <div className="dashboard-summary">
+        <div className="glass-card summary-panel">
+          <div className="summary-heading">
+            <h2 className="text-lg font-bold">Cash Flow Snapshot</h2>
+            <p className="text-sm text-secondary">Monthly movement at a glance</p>
+          </div>
+          <div className="summary-metrics">
+            <div className="summary-metric">
+              <p className="summary-label text-secondary icon-text"><span className="material-symbols-outlined">payments</span> Income</p>
+              <p className="summary-value text-success">+{income_monthly.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm font-normal">{currency}</span></p>
+            </div>
+            <div className="summary-metric">
+              <p className="summary-label text-secondary icon-text"><span className="material-symbols-outlined">shopping_cart</span> Expense</p>
+              <p className="summary-value text-danger">-{expense_monthly.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm font-normal">{currency}</span></p>
+            </div>
+            <div className="summary-metric">
+              <p className="summary-label text-secondary icon-text"><span className="material-symbols-outlined">monitoring</span> Net Cash Flow</p>
+              <p className="summary-value">{net_savings_monthly.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm font-normal">{currency}</span></p>
+            </div>
+          </div>
         </div>
-        <div className="flow-step">
-          <h2 className="text-xl font-bold icon-text" style={{ marginBottom: '16px' }}><span className="material-symbols-outlined">shopping_cart</span> Expense Master</h2>
-          <p className="text-2xl font-bold text-danger" style={{ whiteSpace: 'nowrap' }}>-{expense_monthly.toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-sm font-normal">{currency}</span></p>
-        </div>
-        <div className="flow-step glass-card" style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '16px', margin: 0 }}>
-          <p className="text-secondary text-sm icon-text" style={{marginBottom: '8px'}}>
-            <span className="material-symbols-outlined">account_balance</span> Total Master Balance
-          </p>
-          <p className="text-2xl font-bold" style={{ whiteSpace: 'nowrap' }}>{initial_savings.toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-sm font-normal">{currency}</span></p>
-        </div>
-        <div className="flow-step glass-card" style={{ background: 'rgba(251, 191, 36, 0.1)', padding: '16px', margin: 0 }}>
-          <p className="text-secondary text-sm icon-text" style={{marginBottom: '8px'}}>
-            <span className="material-symbols-outlined">health_and_safety</span> Emergency Fund
-          </p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--warning-color, #fbbf24)', whiteSpace: 'nowrap' }}>{emergency_buffer.toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-sm font-normal">{currency}</span></p>
-        </div>
-        <div className="flow-step glass-card" style={{ background: 'rgba(99, 102, 241, 0.05)', padding: '16px', margin: 0 }}>
-          <p className="text-secondary text-sm icon-text" style={{marginBottom: '8px'}}>
-            <span className="material-symbols-outlined">payments</span> Monthly Cash Flow
-          </p>
-          <p className="text-2xl font-bold" style={{ whiteSpace: 'nowrap' }}>{net_savings_monthly.toLocaleString(undefined, {maximumFractionDigits: 2})} <span className="text-sm font-normal">{currency}</span></p>
+
+        <div className="glass-card summary-panel">
+          <div className="summary-heading">
+            <h2 className="text-lg font-bold">Savings & Goal Buffer</h2>
+            <p className="text-sm text-secondary">Reserved cash and what remains for planning</p>
+          </div>
+          <div className="summary-metrics">
+            <div className="summary-metric">
+              <p className="summary-label text-secondary icon-text"><span className="material-symbols-outlined">account_balance</span> Total Balance</p>
+              <p className="summary-value">{initial_savings.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm font-normal">{currency}</span></p>
+            </div>
+            <div className="summary-metric">
+              <p className="summary-label text-secondary icon-text"><span className="material-symbols-outlined">health_and_safety</span> Emergency Fund</p>
+              <p className="summary-value" style={{ color: 'var(--warning-color, #fbbf24)' }}>{emergency_buffer.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm font-normal">{currency}</span></p>
+            </div>
+            <div className="summary-metric">
+              <p className="summary-label text-secondary icon-text"><span className="material-symbols-outlined">flag</span> Available for Goals</p>
+              <p className="summary-value text-success">{available_for_goals.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm font-normal">{currency}</span></p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -133,7 +152,7 @@ export default function Dashboard({ summaryData, onEdit }) {
           <div style={{ marginBottom: '24px' }}>
             <h2 className="text-xl font-bold" style={{ marginBottom: '8px' }}>Your Financial Goals</h2>
             <p className="text-secondary text-sm">
-              Initial base savings available: <span style={{ whiteSpace: 'nowrap' }}>{initial_savings.toLocaleString(undefined, {maximumFractionDigits: 2})} {currency}</span>
+              Savings available after emergency fund: <span style={{ whiteSpace: 'nowrap' }}>{available_for_goals.toLocaleString(undefined, {maximumFractionDigits: 2})} {currency}</span>
             </p>
           </div>
           
@@ -160,8 +179,12 @@ export default function Dashboard({ summaryData, onEdit }) {
             formatter={(e) => ({ name: e.category, value: `-${e.amount}` })} 
           />
           <TransactionListCard 
-            title="Linked Bank Accounts (Base Savings)" type="Account" items={raw_accounts} 
-            formatter={(a) => ({ name: a.name, value: `${a.current_balance ?? a.initial_balance}` })} 
+            title="Linked Bank Accounts (Current Balances)" type="Account" items={raw_accounts} 
+            formatter={(a) => ({ 
+              name: a.name,
+              value: `${(a.current_balance ?? a.initial_balance).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+              secondary: `Opening balance: ${a.initial_balance.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${a.currency}`
+            })} 
           />
           <TransactionListCard 
             title="Emergency Fund Master" type="EmergencyBuffer" items={[{ id: 'emergency_buffer', value: emergency_buffer, currency: currency, name: 'Designated Cash Buffer' }]} 
