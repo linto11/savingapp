@@ -4,7 +4,7 @@ import Ledger from './views/Ledger'
 import Forecast from './views/Forecast'
 import TransactionModal from './components/TransactionModal'
 import SettingsModal from './components/SettingsModal'
-import { apiFetch, API_BASE_URL } from './lib/api'
+import { apiFetch, getApiBaseUrl, isApiConfigured } from './lib/api'
 import './index.css'
 
 function getDefaultForecastDate() {
@@ -49,6 +49,15 @@ function App() {
   const [selectedForecastDate, setSelectedForecastDate] = useState(getDefaultForecastDate())
 
   useEffect(() => {
+    if (!isApiConfigured()) {
+      setDbStatus(prev => ({
+        ...prev,
+        reason: 'Backend API URL is not configured yet for this deployed app.',
+      }))
+      setIsSettingsOpen(true)
+      return
+    }
+
     apiFetch('/settings')
       .then(res => res.json())
       .then(settings => {
@@ -64,7 +73,13 @@ function App() {
           setIsSettingsOpen(true)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setDbStatus(prev => ({
+          ...prev,
+          reason: 'Backend API is not reachable. Open Settings and add your hosted backend URL.',
+        }))
+        setIsSettingsOpen(true)
+      })
   }, [])
 
   const fetchDashboard = () => {
@@ -210,7 +225,7 @@ function App() {
             If this site is on Netlify, set the VITE_API_BASE_URL environment variable to your hosted FastAPI backend URL.
           </p>
           <p className="text-xs text-secondary" style={{ marginTop: '6px' }}>
-            Current API target: {API_BASE_URL}
+            Current API target: {getApiBaseUrl() || 'Not configured yet'}
           </p>
         </div>
       )}

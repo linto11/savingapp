@@ -1,33 +1,76 @@
 import React, { useState, useEffect } from 'react'
-import { apiFetch } from '../lib/api'
+import { apiFetch, getApiBaseUrl, setApiBaseUrl } from '../lib/api'
+
+const EMPTY_SETTINGS = {
+  base_currency: 'AED',
+  emergency_buffer: 50000,
+  database_mode: 'sqlite',
+  sync_to_supabase: false,
+  supabase_project_url: '',
+  supabase_db_host: '',
+  supabase_db_user: 'postgres',
+  supabase_db_name: 'postgres',
+  supabase_db_port: 5432,
+}
 
 export default function SettingsModal({ isOpen, onClose, onRefresh }) {
-  const [settings, setSettings] = useState(null)
+  const [settings, setSettings] = useState(EMPTY_SETTINGS)
   const [syncStatus, setSyncStatus] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [backendUrl, setBackendUrl] = useState('')
   const [error, setError] = useState(null)
+
+  const loadSettingsData = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [settingsResponse, syncResponse] = await Promise.all([
+        apiFetch('/settings'),
+        apiFetch('/settings/sync-status'),
+      ])
+
+      if (!settingsResponse.ok) {
+        throw new Error('Could not reach backend settings service')
+      }
+
+      const data = await settingsResponse.json()
+      const status = syncResponse.ok ? await syncResponse.json() : null
+      setSettings({ ...EMPTY_SETTINGS, ...(data || {}) })
+      setSyncStatus(status)
+    } catch {
+      setSettings(EMPTY_SETTINGS)
+      setSyncStatus(null)
+      setError('Backend is not reachable from this Netlify site yet. Paste your hosted backend URL below, then try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (isOpen) {
-      setLoading(true)
-      Promise.all([
-        apiFetch('/settings').then(res => res.json()),
-        apiFetch('/settings/sync-status').then(res => res.json()),
-      ])
-        .then(([data, status]) => {
-          setSettings(data)
-          setSyncStatus(status)
-          setLoading(false)
-        })
-        .catch(err => {
-          setError(err.message)
-          setLoading(false)
-        })
+      const currentBase = getApiBaseUrl()
+      setBackendUrl(currentBase === '/api' ? '' : currentBase)
+      loadSettingsData()
     }
   }, [isOpen])
 
   if (!isOpen) return null
+
+  const handleApplyBackendUrl = async () => {
+    setTestingConnection(true)
+    setError(null)
+
+    try {
+      setApiBaseUrl(backendUrl)
+      await loadSettingsData()
+      onRefresh?.()
+    } finally {
+      setTestingConnection(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -78,6 +121,25 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {error && <p className="text-danger text-sm">{error}</p>}
+
+            <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
+              <div className="text-sm" style={{ fontWeight: 600, marginBottom: '6px' }}>
+                Backend API Connection
+              </div>
+              <input
+                type="text"
+                value={backendUrl}
+                onChange={(e) => setBackendUrl(e.target.value)}
+                placeholder="https://your-backend-host.com"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+              />
+              <p className="text-xs text-secondary" style={{ marginTop: '8px' }}>
+                For Netlify, enter the URL of your deployed FastAPI backend first. Then you can switch it to Supabase here.
+              </p>
+              <button type="button" className="btn" onClick={handleApplyBackendUrl} disabled={testingConnection} style={{ marginTop: '10px' }}>
+                {testingConnection ? 'Connecting...' : 'Apply connection'}
+              </button>
+            </div>
 
             <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
               <div className="text-sm" style={{ fontWeight: 600, marginBottom: '6px' }}>
