@@ -49,10 +49,16 @@ export function apiUrl(path = '') {
   return baseUrl ? `${baseUrl}${normalizedPath}` : ''
 }
 
-export function apiFetch(path, options) {
+export function apiFetch(path, options = {}) {
   const url = apiUrl(path)
   if (!url) {
     return Promise.reject(new Error('Backend API URL is not configured for this deployed app yet.'))
   }
-  return fetch(url, options)
+
+  const controller = new AbortController()
+  const timeoutMs = options.timeoutMs ?? 8000
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId))
 }

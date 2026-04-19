@@ -54,8 +54,10 @@ The backend serves as the SQL Engine and the mathematical core.
 5. If you want to use Supabase instead of the local SQLite database, use [.env.example](.env.example) as a non-secret template only. Keep passwords out of source control and enter the final Supabase credentials or connection string locally or at runtime through the app Settings screen.
 6. Boot the server using Uvicorn (this will run on port `8000`):
    ```bash
-   uvicorn backend.api.app:app --port 8000 --reload
+   uvicorn backend.api.app:app --host 127.0.0.1 --port 8000
    ```
+
+> On Windows, this non-reload mode is the most reliable default. If you specifically want auto-reload, try it only after the base app is confirmed working.
 
 *(The backend must remain running in this terminal window).*
 
@@ -101,6 +103,12 @@ Once dependencies are installed, the shortest local workflow is:
 **Terminal 1**
 ```bash
 npm run backend:dev
+```
+
+If you want hot reload after confirming everything works, you can use:
+
+```bash
+npm run backend:reload
 ```
 
 **Terminal 2**
