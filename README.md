@@ -141,6 +141,18 @@ VITE_API_BASE_URL=https://your-backend-service.onrender.com
 5. Redeploy the Netlify site.
 6. Open Settings in the app and complete the Supabase connection details if you want hosted persistence.
 
+### Saved backend switching
+
+The app saves the backend URL you set in the Settings screen, so moving between local development and the hosted Netlify experience stays simple.
+
+Recommended hosted API value:
+
+```bash
+VITE_API_BASE_URL=https://savingapp-4lbw.onrender.com
+```
+
+You can still switch the app between the local backend and the hosted Render backend from the Settings screen at any time.
+
 ## Graphify for New Contributors
 
 If you are cloning this repository for the first time, Graphify is the fastest way to understand how the backend, frontend, forecasting, and database pieces connect.

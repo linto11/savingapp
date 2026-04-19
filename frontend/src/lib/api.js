@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'savingsApp.apiBaseUrl'
+export const LOCAL_BACKEND_URL = 'http://127.0.0.1:8000'
+export const RENDER_BACKEND_URL = (import.meta.env.VITE_API_BASE_URL || 'https://savingapp-4lbw.onrender.com').trim().replace(/\/$/, '')
 
 function getStoredApiBaseUrl() {
   if (typeof window === 'undefined') return ''

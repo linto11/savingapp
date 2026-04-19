@@ -34,6 +34,15 @@ Forecast logic, dashboard aggregation, and SQLite to Supabase sync logic are kep
 The SQLite to Supabase migration and comparison logic now lives in [backend/services/db_sync.py](backend/services/db_sync.py).
 The live connection and sync indicator shown in the UI is backed by the settings and sync-status endpoints exposed from the API layer.
 
+## Deployment model
+
+The application is now kept intentionally simple:
+
+- local development uses the Vite frontend with the FastAPI backend
+- hosted frontend uses Netlify
+- hosted backend uses Render
+- the backend URL can be saved from the Settings screen so switching between local and hosted use stays smooth
+
 ## Development knowledge graph
 
 A Graphify-based development reference has been added so the codebase can be explored as a local knowledge graph.

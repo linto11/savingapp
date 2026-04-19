@@ -13,5 +13,10 @@
   "supabase_db_user": "postgres",
   "supabase_db_name": "postgres",
   "supabase_db_port": 5432,
-  "account_link_migration_version": 2
+  "account_link_migration_version": 2,
+  "supabase_project_url": "https://vtflzxqdvmodpbeonfue.supabase.co",
+  "supabase_password_saved": false,
+  "supabase_key_saved": false,
+  "database_provider_active": "sqlite",
+  "database_target_label": "sqlite:///./savings.db"
 }

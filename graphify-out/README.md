@@ -10,9 +10,9 @@ This folder contains the generated local knowledge graph for the repository.
 
 ## Latest verified snapshot
 
-- 121 nodes
-- 235 edges
-- 16 communities
+- 466 nodes
+- 1638 edges
+- 19 communities
 
 ## Using this after cloning the repo
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { apiFetch, getApiBaseUrl, setApiBaseUrl } from '../lib/api'
+import { apiFetch, getApiBaseUrl, setApiBaseUrl, LOCAL_BACKEND_URL, RENDER_BACKEND_URL } from '../lib/api'
 
 const EMPTY_SETTINGS = {
   base_currency: 'AED',
@@ -134,11 +134,19 @@ export default function SettingsModal({ isOpen, onClose, onRefresh }) {
                 style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
               />
               <p className="text-xs text-secondary" style={{ marginTop: '8px' }}>
-                For Netlify, enter the URL of your deployed FastAPI backend first. Then you can switch it to Supabase here.
+                This saved URL is reused across your local and hosted app sessions on this device.
               </p>
-              <button type="button" className="btn" onClick={handleApplyBackendUrl} disabled={testingConnection} style={{ marginTop: '10px' }}>
-                {testingConnection ? 'Connecting...' : 'Apply connection'}
-              </button>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                <button type="button" className="btn" onClick={() => setBackendUrl(LOCAL_BACKEND_URL)}>
+                  Use local backend
+                </button>
+                <button type="button" className="btn" onClick={() => setBackendUrl(RENDER_BACKEND_URL)}>
+                  Use Render backend
+                </button>
+                <button type="button" className="btn" onClick={handleApplyBackendUrl} disabled={testingConnection}>
+                  {testingConnection ? 'Connecting...' : 'Apply connection'}
+                </button>
+              </div>
             </div>
 
             <div style={{ padding: '12px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)' }}>
